@@ -1,5 +1,6 @@
 package com.github.tomaszgaweda.rocksdb;
 
+import com.hazelcast.map.MapStore;
 import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,11 @@ class RocksDatabase {
     private final RocksDB db;
     private volatile boolean open;
 
+    /**
+     * Creates new instance and initializes connection to the RocksDB database.
+     *
+     * Should not be used directly; prefer using {@link  RocksDatabaseContainer#getRocksDb} method.
+     */
     RocksDatabase(@Nonnull String dbDirectory, boolean autoCreate) {
         this.directory = new File(dbDirectory);
 
@@ -126,6 +132,7 @@ class RocksDatabase {
 
     /**
      * Closes the database instance.
+     * Usage of this {@linkplain RocksDatabase} is not possible after connection is closed.
      */
     public void close() {
         log.info("closing connection to database " + directory);

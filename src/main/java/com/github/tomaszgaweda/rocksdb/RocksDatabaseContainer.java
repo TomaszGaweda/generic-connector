@@ -19,6 +19,10 @@ class RocksDatabaseContainer {
      */
     private static final Map<String, DatabaseWithRefs> CACHED_DATABASES = new HashMap<>();
 
+    /**
+     * @param db database handle.
+     * @param stores mutable set of MapStores that uses given handle.
+     */
     private record DatabaseWithRefs (RocksDatabase db, Set<MapStore<?, ?>> stores){}
 
     /**
