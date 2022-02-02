@@ -5,9 +5,9 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.tomaszgaweda</groupId>
-	<artifactId>generic-connector</artifactId>
+	<artifactId>rocksdb-hazelcast-connector</artifactId>
 	<version>0.1</version>
-	<name>Connector library</name>
+	<name>RocksDB Connector library</name>
 	<packaging>jar</packaging>
 
 
@@ -24,13 +24,6 @@
 			<groupId>com.hazelcast</groupId>
 			<artifactId>hazelcast</artifactId>
 			<version>5.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.hazelcast</groupId>
-			<artifactId>hazelcast</artifactId>
-			<version>5.0</version>
-			<classifier>tests</classifier>
-			<scope>test</scope>
 		</dependency>
 
 		<dependency>
@@ -70,12 +63,6 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.junit.vintage</groupId>
-			<artifactId>junit-vintage-engine</artifactId>
-			<version>5.5.0</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
 			<version>3.1.0</version>
@@ -94,27 +81,9 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.tngtech.archunit</groupId>
-			<artifactId>archunit-junit5-api</artifactId>
-			<version>0.21.0</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.tngtech.archunit</groupId>
-			<artifactId>archunit-junit5-engine</artifactId>
-			<version>0.21.0</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
 			<groupId>eu.codearte.catch-exception</groupId>
 			<artifactId>catch-exception</artifactId>
 			<version>1.4.4</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.awaitility</groupId>
-			<artifactId>awaitility</artifactId>
-			<version>3.0.0</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -154,7 +123,6 @@
 					<argLine>
 						-Dfile.encoding=UTF-8 -Xmx2g
 					</argLine>
-					<skipTests>${skipUTs}</skipTests>
 					<properties>
 						<configurationParameters>
 							junit.jupiter.extensions.autodetection.enabled = true
@@ -173,6 +141,40 @@
 						<version>9.1</version>
 					</dependency>
 				</dependencies>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<finalName>${project.build.finalName}</finalName>
+							<createSourcesJar>true</createSourcesJar>
+							<shadeSourcesContent>true</shadeSourcesContent>
+							<shadeTestJar>true</shadeTestJar>
+							<transformers>
+								<transformer
+										implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+								<transformer
+										implementation="org.apache.maven.plugins.shade.resource.ApacheNoticeResourceTransformer" />
+							</transformers>
+							<filters>
+								<filter>
+									<artifact>*:*</artifact>
+									<excludes>
+										<exclude>META-INF/MANIFEST.MF</exclude>
+										<exclude>**/module-info.class</exclude>
+									</excludes>
+								</filter>
+							</filters>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
