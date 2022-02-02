@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import java.io.*;
 import java.nio.file.Files;
+import java.util.*;
 
 import static com.github.tomaszgaweda.rocksdb.SerializationUtils.fromBytes;
 import static com.github.tomaszgaweda.rocksdb.SerializationUtils.toBytes;
@@ -73,6 +74,32 @@ class RocksDatabase {
             byte[] keyBytes = toBytes(key);
             byte[] bytesFromDb = db.get(keyBytes);
             return bytesFromDb == null ? null : fromBytes(bytesFromDb, valueClass);
+        } catch (RocksDBException e) {
+            throw new IllegalStateException("error when writing to rocksdb " + directory, e);
+        }
+    }
+
+    <K, V> Map<K, V> get(@Nonnull Collection<K> keys, @Nonnull Class<V> valueClass) {
+        checkOpened();
+        try {
+            List<byte[]> keysSerialized = keys.stream()
+                    .map(SerializationUtils::toBytes)
+                    .toList();
+
+            List<byte[]> resultList = db.multiGetAsList(keysSerialized);
+
+            Iterator<K> keyIterator;
+            Iterator<byte[]> resultIterator;
+            Map<K, V> resultMap = new HashMap<>(resultList.size());
+            for (keyIterator = keys.iterator(), resultIterator = resultList.iterator();
+                 keyIterator.hasNext();) {
+                K key = keyIterator.next();
+                byte[] result = resultIterator.next();
+                if (result != null) {
+                    resultMap.put(key, fromBytes(result, valueClass));
+                }
+            }
+            return resultMap;
         } catch (RocksDBException e) {
             throw new IllegalStateException("error when writing to rocksdb " + directory, e);
         }

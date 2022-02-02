@@ -6,12 +6,12 @@ import com.hazelcast.map.MapStore;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 import static com.github.tomaszgaweda.rocksdb.RocksDatabaseContainer.dispose;
 import static com.github.tomaszgaweda.rocksdb.RocksDatabaseContainer.getRocksDb;
+import static java.util.Collections.emptyList;
 
 /**
  * {@linkplain MapStore} implementation for use with RocksDb.
@@ -121,15 +121,11 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
 
     @Override
     public Map<K, V> loadAll(Collection<K> collection) {
-        var resultMap = new HashMap<K, V>(collection.size());
-        for (K key : collection) {
-            resultMap.put(key, load(key));
-        }
-        return resultMap;
+        return rocksDatabase.get(collection, valueClass);
     }
 
     @Override
     public Iterable<K> loadAllKeys() {
-        return null;
+        return emptyList();
     }
 }
