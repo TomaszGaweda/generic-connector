@@ -120,14 +120,14 @@ public class RocksDbMapStoreTest {
         // when
         IMap<String, String> testMap = hazelcast.getMap("TestMap");
         testMap.put("test3_1", "hello3_1");
+        String resultFromPreviousWrite = testMap.get("test3");
 
         hazelcast.shutdown();
 
         Thread.sleep(1000); // wait until MapStores are disposed.
 
         // then
-
-        //given
+        assertThat(resultFromPreviousWrite).isEqualTo("hello3");
         try (var rocksDB = RocksDB.open(new Options().setCreateIfMissing(false), tempDbDir.toFile().getAbsolutePath())) {
             byte[] first = rocksDB.get(toBytes("test3"));
             byte[] second = rocksDB.get(toBytes("test3_1"));
