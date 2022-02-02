@@ -1,6 +1,5 @@
 package com.github.tomaszgaweda.rocksdb;
 
-import com.hazelcast.map.MapStore;
 import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +60,10 @@ class RocksDatabase {
         log.info("connection to database {} is opened successfully", directory);
     }
 
+
+    /**
+     * Put given key-value pair into the database. Both key and value cannot be null.
+     */
     void put(@Nonnull Object key, @Nonnull Object value) {
         checkOpened();
         try {
@@ -70,6 +73,9 @@ class RocksDatabase {
         }
     }
 
+    /**
+     * Puts all elements of the map into the db. No key nor values should be null.
+     */
     void putAll(@Nonnull Map<?, ?> map) {
         checkOpened();
         WriteBatch batch = new WriteBatch();
@@ -84,6 +90,9 @@ class RocksDatabase {
         }
     }
 
+    /**
+     * Returns value read from RocksDB from given key or null if there's no such value in the database.
+     */
     <V> V get(@Nonnull Object key, @Nonnull Class<V> valueClass) {
         checkOpened();
         try {
@@ -95,6 +104,10 @@ class RocksDatabase {
         }
     }
 
+    /**
+     * Gets all keys mentioned in the collection. If some key is missing in the db, no value for it will be provided
+     * (and no exception will be thrown).
+     */
     <K, V> Map<K, V> get(@Nonnull Collection<K> keys, @Nonnull Class<V> valueClass) {
         checkOpened();
         try {

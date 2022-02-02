@@ -135,23 +135,17 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
     @SuppressWarnings("unchecked")
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
         if (rocksDatabase != null) return; // already initialized in the constructor
-       this.rocksDatabase = databaseFor(properties);
+
+        String dbPath = properties.getProperty(DATABASE_PATH_PARAM);
+        boolean dbAutocreation = Boolean.parseBoolean(properties.getProperty(DATABASE_AUTOCREATION_PARAM,
+                DATABASE_AUTOCREATION_DEFAULT));
+
+        this.rocksDatabase = getRocksDb(dbPath, dbAutocreation, this);
         try {
             this.valueClass = (Class<V>) Class.forName(properties.getProperty(VALUE_CLASS_PARAM));
         } catch (ClassNotFoundException e) {
             throw new IllegalArgumentException("error initializing RocksDbMapStore", e);
         }
-    }
-
-    /**
-     * Returns new or existing {@link RocksDatabase} for given properties.
-     * @return RocksDb database handler.
-     */
-    private RocksDatabase databaseFor(Properties properties) {
-        String dbPath = properties.getProperty(DATABASE_PATH_PARAM);
-        boolean dbAutocreation = Boolean.parseBoolean(properties.getProperty(DATABASE_AUTOCREATION_PARAM, DATABASE_AUTOCREATION_DEFAULT));
-
-        return getRocksDb(dbPath, dbAutocreation, this);
     }
 
     @Override
