@@ -4,11 +4,14 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.MapLoaderLifecycleSupport;
 import com.hazelcast.map.MapStore;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
+
+import static com.github.tomaszgaweda.rocksdb.RocksDatabaseContainer.dispose;
+import static com.github.tomaszgaweda.rocksdb.RocksDatabaseContainer.getRocksDb;
 
 /**
  * {@linkplain MapStore} implementation for use with RocksDb.
@@ -28,10 +31,10 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
     /**
      * If true, connector will create database when it was not present in {@linkplain #DATABASE_PATH_PARAM}.
      */
-    public static final String DATABASE_AUTOCREATION = "rocksdb.database.autocreate";
+    public static final String DATABASE_AUTOCREATION_PARAM = "rocksdb.database.autocreate";
 
     /**
-     * Default value of {@link #DATABASE_AUTOCREATION} parameter.
+     * Default value of {@link #DATABASE_AUTOCREATION_PARAM} parameter.
      */
     public static final String DATABASE_AUTOCREATION_DEFAULT = "true";
 
@@ -45,18 +48,23 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
      */
     public static final String VALUE_CLASS_PARAM = "rocksdb.mapstore.valueClass";
 
-    /**
-     * Map of db path -> db handler.
-     */
-    private static final Map<String, RocksDatabase> CACHED_DATABASES = new ConcurrentHashMap<>();
-
     private RocksDatabase rocksDatabase;
     private Class<K> keyClass;
     private Class<V> valueClass;
 
+    public RocksDbMapStore() {}
+
+    // todo: add builder
+    public RocksDbMapStore(File rocksDbDir, boolean autoCreate, Class<K> keyClass, Class<V> valueClass) {
+        this.rocksDatabase = getRocksDb(rocksDbDir.getAbsolutePath(), autoCreate, this);
+        this.keyClass = keyClass;
+        this.valueClass = valueClass;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+        if (rocksDatabase != null) return; // already initialized in the constructor
        this.rocksDatabase = databaseFor(properties);
         try {
             this.keyClass = (Class<K>) Class.forName(properties.getProperty(KEY_CLASS_PARAM));
@@ -70,16 +78,16 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
      * Returns new or existing {@link RocksDatabase} for given properties.
      * @return RocksDb database handler.
      */
-    private static RocksDatabase databaseFor(Properties properties) {
+    private RocksDatabase databaseFor(Properties properties) {
         String dbPath = properties.getProperty(DATABASE_PATH_PARAM);
-        boolean dbAutocreation = Boolean.getBoolean(properties.getProperty(DATABASE_AUTOCREATION, DATABASE_AUTOCREATION_DEFAULT));
+        boolean dbAutocreation = Boolean.parseBoolean(properties.getProperty(DATABASE_AUTOCREATION_PARAM, DATABASE_AUTOCREATION_DEFAULT));
 
-        return CACHED_DATABASES.computeIfAbsent(dbPath, directory -> new RocksDatabase(directory, dbAutocreation));
+        return getRocksDb(dbPath, dbAutocreation, this);
     }
 
     @Override
     public void destroy() {
-
+        dispose(rocksDatabase.getDirectory().getAbsolutePath(), this);
     }
 
     @Override
