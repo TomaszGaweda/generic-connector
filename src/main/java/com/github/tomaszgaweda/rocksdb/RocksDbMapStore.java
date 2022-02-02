@@ -166,9 +166,7 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
 
     @Override
     public void storeAll(Map<K, V> map) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            store(entry.getKey(), entry.getValue());
-        }
+        rocksDatabase.putAll(map);
     }
 
     @Override

@@ -1,8 +1,6 @@
 package com.github.tomaszgaweda.rocksdb;
 
-import org.rocksdb.Options;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksDBException;
+import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,19 +26,17 @@ class RocksDatabase {
     }
 
     private final File directory;
-    private final boolean autoCreate;
     private final RocksDB db;
     private volatile boolean open;
 
     RocksDatabase(@Nonnull String dbDirectory, boolean autoCreate) {
         this.directory = new File(dbDirectory);
-        this.autoCreate = autoCreate;
 
         if (!directory.exists() && !autoCreate) {
-            throw new IllegalArgumentException("provided directory %s does not exist and autocreation was turned off".formatted(dbDirectory));
+            throw new IllegalArgumentException("provided directory %s does not exist and auto creation was turned off".formatted(dbDirectory));
         }
         if (directory.exists() && !directory.isDirectory()) {
-            throw new IllegalArgumentException("provided directory %s is not a directory".formatted(dbDirectory));
+            throw new IllegalArgumentException("provided RocksDB directory %s is not a directory".formatted(dbDirectory));
         }
 
         final Options options = new Options();
@@ -53,7 +49,7 @@ class RocksDatabase {
             db = RocksDB.open(options, directory.getAbsolutePath());
             open = true;
         } catch (IOException | RocksDBException e) {
-            throw new IllegalArgumentException("error initializing RocksDB", e);
+            throw new IllegalArgumentException("error initializing RocksDB connection", e);
         }
 
         log.info("connection to database {} is opened successfully", directory);
@@ -64,7 +60,21 @@ class RocksDatabase {
         try {
             db.put(toBytes(key), toBytes(value));
         } catch (RocksDBException e) {
-            throw new IllegalStateException("error when writing to rocksdb " + directory, e);
+            throw new IllegalStateException("error when writing to RocksDB " + directory, e);
+        }
+    }
+
+    void putAll(@Nonnull Map<?, ?> map) {
+        checkOpened();
+        WriteBatch batch = new WriteBatch();
+        try {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                batch.put(toBytes(entry.getKey()), toBytes(entry.getValue()));
+            }
+
+            db.write(new WriteOptions(), batch);
+        } catch (RocksDBException e) {
+            throw new IllegalStateException("error when writing to RocksDB " + directory, e);
         }
     }
 
@@ -75,7 +85,7 @@ class RocksDatabase {
             byte[] bytesFromDb = db.get(keyBytes);
             return bytesFromDb == null ? null : fromBytes(bytesFromDb, valueClass);
         } catch (RocksDBException e) {
-            throw new IllegalStateException("error when writing to rocksdb " + directory, e);
+            throw new IllegalStateException("error when writing to RocksDB " + directory, e);
         }
     }
 
@@ -101,7 +111,7 @@ class RocksDatabase {
             }
             return resultMap;
         } catch (RocksDBException e) {
-            throw new IllegalStateException("error when writing to rocksdb " + directory, e);
+            throw new IllegalStateException("error when writing to RocksDB " + directory, e);
         }
     }
 
@@ -110,7 +120,7 @@ class RocksDatabase {
         try {
             db.delete(toBytes(key));
         } catch (RocksDBException e) {
-            throw new IllegalStateException("error when writing to rocksdb " + directory, e);
+            throw new IllegalStateException("error when writing to RocksDB " + directory, e);
         }
     }
 
@@ -134,9 +144,5 @@ class RocksDatabase {
      */
     public File getDirectory() {
         return directory;
-    }
-
-    public boolean isAutoCreate() {
-        return autoCreate;
     }
 }
