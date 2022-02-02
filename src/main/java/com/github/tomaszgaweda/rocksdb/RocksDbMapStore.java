@@ -18,6 +18,50 @@ import static java.util.Collections.emptyList;
  *
  * Can be used on any type of map.
  *
+ * Instances of RocksDB will be reused, so if few maps want to reuse the same K-V store, then only one connection will
+ * be kept in memory.
+ *
+ * User have two options to use this map store implementation in his code:
+ * <ol>
+ *     <li>Use {@linkplain com.hazelcast.config.MapStoreConfig#setClassName}
+ *         and {@linkplain com.hazelcast.config.MapStoreConfig#setProperty} to provide all required arguments.
+ *         Arguments are defined as static constants in the class.
+ *
+ *         Example usage:
+ *         <pre>
+ *             var mapConfig = new MapConfig("TestMap");
+ *             var mapStoreConfig = new MapStoreConfig()
+ *                 .setClassName(RocksDbMapStore.class.getName())
+ *                 .setProperty(DATABASE_PATH_PARAM, "/path/to/rocksdb/database)
+ *                 .setProperty(DATABASE_AUTOCREATION_PARAM, "true")
+ *                 .setProperty(KEY_CLASS_PARAM, "java.lang.String")
+ *                 .setProperty(VALUE_CLASS_PARAM, "java.lang.String")
+ *                 .setEnabled(true)
+ *                 .setWriteBatchSize(1)
+ *                 .setWriteDelaySeconds(0);
+ *
+ *         mapConfig.setMapStoreConfig(mapStoreConfig);
+ *         </pre>
+ *         </li>
+ *
+ *         <li> Directly use constructor and pass the instance into
+ *         {@link com.hazelcast.config.MapStoreConfig#setImplementation} method.
+ *
+ *         Example usage:
+ *         <pre>
+ *         var mapConfig = new MapConfig("TestMap");
+ *         var mapStoreConfig = new MapStoreConfig()
+ *                 .setImplementation(new RocksDbMapStore<>("/path/to/rocksdb/", true, String.class, String.class))
+ *                 .setEnabled(true)
+ *                 .setWriteBatchSize(1)
+ *                 .setWriteDelaySeconds(0);
+ *
+ *         mapConfig.setMapStoreConfig(mapStoreConfig);
+ *         </pre>
+ *
+ *         </li>
+ * </ol>
+ *
  * @param <K> type of key in the map
  * @param <V> type of values in the map
  */
@@ -52,6 +96,7 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
     private Class<K> keyClass;
     private Class<V> valueClass;
 
+    @SuppressWarnings("unused") // for indirect creation by Hazelcast
     public RocksDbMapStore() {}
 
     // todo: add builder
