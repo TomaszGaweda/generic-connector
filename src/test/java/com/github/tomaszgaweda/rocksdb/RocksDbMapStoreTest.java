@@ -53,7 +53,7 @@ public class RocksDbMapStoreTest {
 
         hazelcast.shutdown();
 
-        Thread.sleep(1000);
+        Thread.sleep(1000); // wait until MapStores are disposed.
 
         // then
         try (var rocksDB = RocksDB.open(new Options().setCreateIfMissing(false), tempDbDir.toFile().getAbsolutePath())) {
@@ -62,6 +62,82 @@ public class RocksDbMapStoreTest {
             assertThat(bytes).isNotNull();
             String result = fromBytes(bytes, String.class);
             assertThat(result).isEqualTo("hello");
+        }
+    }
+
+    @Test
+    void creates_db_using_constructor() throws RocksDBException, InterruptedException {
+        //given
+        var config = new Config();
+        var mapConfig = new MapConfig("TestMap");
+        var mapStoreConfig = new MapStoreConfig()
+                .setImplementation(new RocksDbMapStore<>(tempDbDir.toFile(), true, String.class, String.class))
+                .setEnabled(true)
+                .setWriteBatchSize(1)
+                .setWriteDelaySeconds(0);
+
+        mapConfig.setMapStoreConfig(mapStoreConfig);
+        config.addMapConfig(mapConfig);
+        var hazelcast = Hazelcast.newHazelcastInstance(config);
+
+        // when
+        IMap<String, String> testMap = hazelcast.getMap("TestMap");
+        testMap.put("test2", "hello2");
+
+        hazelcast.shutdown();
+
+        Thread.sleep(1000); // wait until MapStores are disposed.
+
+        // then
+        try (var rocksDB = RocksDB.open(new Options().setCreateIfMissing(false), tempDbDir.toFile().getAbsolutePath())) {
+            byte[] bytes = rocksDB.get(toBytes("test2"));
+
+            assertThat(bytes).isNotNull();
+            String result = fromBytes(bytes, String.class);
+            assertThat(result).isEqualTo("hello2");
+        }
+    }
+
+    @Test
+    void reuses_exising_db() throws RocksDBException, InterruptedException {
+        //given
+        try (var rocksDB = RocksDB.open(new Options().setCreateIfMissing(true), tempDbDir.toFile().getAbsolutePath())) {
+            rocksDB.put(toBytes("test3"), toBytes("hello3"));
+        }
+
+        var config = new Config();
+        var mapConfig = new MapConfig("TestMap");
+        var mapStoreConfig = new MapStoreConfig()
+                .setImplementation(new RocksDbMapStore<>(tempDbDir.toFile(), false, String.class, String.class))
+                .setEnabled(true)
+                .setWriteBatchSize(1)
+                .setWriteDelaySeconds(0);
+
+        mapConfig.setMapStoreConfig(mapStoreConfig);
+        config.addMapConfig(mapConfig);
+        var hazelcast = Hazelcast.newHazelcastInstance(config);
+
+        // when
+        IMap<String, String> testMap = hazelcast.getMap("TestMap");
+        testMap.put("test3_1", "hello3_1");
+
+        hazelcast.shutdown();
+
+        Thread.sleep(1000); // wait until MapStores are disposed.
+
+        // then
+
+        //given
+        try (var rocksDB = RocksDB.open(new Options().setCreateIfMissing(false), tempDbDir.toFile().getAbsolutePath())) {
+            byte[] first = rocksDB.get(toBytes("test3"));
+            byte[] second = rocksDB.get(toBytes("test3_1"));
+
+            assertThat(first)
+                    .overridingErrorMessage("first value should not be removed")
+                    .isNotNull();
+            assertThat(second)
+                    .overridingErrorMessage("second value should not be removed")
+                    .isNotNull();
         }
     }
 

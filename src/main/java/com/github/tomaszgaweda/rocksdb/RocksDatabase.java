@@ -14,7 +14,9 @@ import static com.github.tomaszgaweda.rocksdb.SerializationUtils.fromBytes;
 import static com.github.tomaszgaweda.rocksdb.SerializationUtils.toBytes;
 
 /**
- * Container for a single RocksDB database.
+ * Container for a single RocksDB database with methods for convenient usage of the database.
+ *
+ * By default, all exceptions will be rethrown.
  */
 class RocksDatabase {
 
@@ -27,6 +29,7 @@ class RocksDatabase {
     private final File directory;
     private final boolean autoCreate;
     private final RocksDB db;
+    private volatile boolean open;
 
     RocksDatabase(@Nonnull String dbDirectory, boolean autoCreate) {
         this.directory = new File(dbDirectory);
@@ -47,6 +50,7 @@ class RocksDatabase {
                 Files.createDirectories(directory.getAbsoluteFile().toPath());
             }
             db = RocksDB.open(options, directory.getAbsolutePath());
+            open = true;
         } catch (IOException | RocksDBException e) {
             throw new IllegalArgumentException("error initializing RocksDB", e);
         }
@@ -55,6 +59,7 @@ class RocksDatabase {
     }
 
     void put(@Nonnull Object key, @Nonnull Object value) {
+        checkOpened();
         try {
             db.put(toBytes(key), toBytes(value));
         } catch (RocksDBException e) {
@@ -63,6 +68,7 @@ class RocksDatabase {
     }
 
     <V> V get(@Nonnull Object key, @Nonnull Class<V> valueClass) {
+        checkOpened();
         try {
             byte[] keyBytes = toBytes(key);
             byte[] bytesFromDb = db.get(keyBytes);
@@ -73,6 +79,7 @@ class RocksDatabase {
     }
 
     void delete (@Nonnull Object key) {
+        checkOpened();
         try {
             db.delete(toBytes(key));
         } catch (RocksDBException e) {
@@ -80,9 +87,19 @@ class RocksDatabase {
         }
     }
 
+    /**
+     * Closes the database instance.
+     */
     public void close() {
         log.info("closing connection to database " + directory);
+        open = false;
         db.close();
+    }
+
+    private void checkOpened() {
+        if (!open) {
+            throw new IllegalStateException("cannot perform actions on already closed instance of RocksDB");
+        }
     }
 
     /**
