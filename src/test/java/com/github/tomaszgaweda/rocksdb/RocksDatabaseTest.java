@@ -13,6 +13,7 @@ import java.util.Map;
 import static com.github.tomaszgaweda.rocksdb.SerializationUtils.fromBytes;
 import static com.github.tomaszgaweda.rocksdb.SerializationUtils.toBytes;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 class RocksDatabaseTest {
 
@@ -51,7 +52,7 @@ class RocksDatabaseTest {
 
         // when
         db.put("test1", "test1");
-        db.put( "test2", "testTwoooo");
+        db.put("test2", "testTwoooo");
         db.close();
 
         // then
@@ -76,6 +77,7 @@ class RocksDatabaseTest {
                 "test4", "test4"
         ));
         Map<String, String> valuesRead = db.get(List.of("test1", "test2", "test3", "test4"), String.class);
+        String test3Value = db.get("test3", String.class);
         db.close();
 
         // then
@@ -84,10 +86,32 @@ class RocksDatabaseTest {
            "test3", "test3",
            "test4", "test4"
         ));
+        assertThat(test3Value).isEqualTo("test3");
         try (var rocksDB = RocksDB.open(new Options().setCreateIfMissing(false), dbAbsoluteDir)) {
             assertThatValue(rocksDB, "test1", "test1");
             assertThatValue(rocksDB, "test3", "test3");
             assertThatValue(rocksDB, "test4", "test4");
+        }
+    }
+
+    @Test
+    void does_not_allows_usage_after_close() {
+        // given
+        String dbAbsoluteDir = dbDir.getAbsolutePath();
+        var db = new RocksDatabase(dbAbsoluteDir, true);
+
+        // when
+        db.put("test1", "test1");
+        db.close();
+
+        try {
+            db.put("test2", "test2");
+            fail("exception expected");
+        } catch (Exception expected) {
+            // then
+            assertThat(expected)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("cannot perform actions on already closed instance of RocksDB");
         }
     }
 
