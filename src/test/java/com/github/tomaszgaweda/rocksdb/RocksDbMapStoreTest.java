@@ -12,6 +12,7 @@ import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
+import java.io.File;
 import java.nio.file.Path;
 
 import static com.github.tomaszgaweda.rocksdb.RocksDbMapStore.*;
@@ -137,6 +138,64 @@ public class RocksDbMapStoreTest {
                     .isNotNull();
             assertThat(second)
                     .overridingErrorMessage("second value should not be removed")
+                    .isNotNull();
+        }
+    }
+
+    @Test
+    void multiple_map_access() throws RocksDBException, InterruptedException {
+        //given
+        final File rocksDbDir = tempDbDir.toFile();
+        var config = new Config();
+        var mapConfigMap1 = new MapConfig("TestMap1")
+                .setMapStoreConfig(new MapStoreConfig()
+                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class, String.class))
+                .setEnabled(true)
+                .setWriteBatchSize(1)
+                .setWriteDelaySeconds(0));
+        var mapConfigMap2 = new MapConfig("TestMap2")
+                .setMapStoreConfig(new MapStoreConfig()
+                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class, String.class))
+                .setEnabled(true)
+                .setWriteBatchSize(1)
+                .setWriteDelaySeconds(0));
+        var mapConfigMap3 = new MapConfig("TestMap3")
+                .setMapStoreConfig(new MapStoreConfig()
+                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class, Integer.class))
+                .setEnabled(true)
+                .setWriteBatchSize(1)
+                .setWriteDelaySeconds(0));
+
+        config.addMapConfig(mapConfigMap1);
+        config.addMapConfig(mapConfigMap2);
+        config.addMapConfig(mapConfigMap3);
+        var hazelcast = Hazelcast.newHazelcastInstance(config);
+
+        // when
+        IMap<String, String> testMap1 = hazelcast.getMap("TestMap1");
+        IMap<String, String> testMap2 = hazelcast.getMap("TestMap2");
+        IMap<String, Integer> testMap3 = hazelcast.getMap("TestMap3");
+        testMap1.put("test-multi-1", "I am here!");
+        testMap2.put("test-multi-2", "And here too!");
+        testMap3.put("test-multi-3", 10);
+        hazelcast.shutdown();
+
+        Thread.sleep(1500); // wait until MapStores are disposed.
+
+        // then
+        try (var rocksDB = RocksDB.open(new Options().setCreateIfMissing(false), rocksDbDir.getAbsolutePath())) {
+            byte[] first = rocksDB.get(toBytes("test-multi-1"));
+            byte[] second = rocksDB.get(toBytes("test-multi-2"));
+            byte[] third = rocksDB.get(toBytes("test-multi-3"));
+
+            assertThat(first)
+                    .overridingErrorMessage("first value should not be removed")
+                    .isNotNull();
+            assertThat(second)
+                    .overridingErrorMessage("second value should not be removed")
+                    .isNotNull();
+            assertThat(third)
+                    .overridingErrorMessage("third value should not be removed")
                     .isNotNull();
         }
     }
