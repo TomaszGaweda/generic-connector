@@ -6,8 +6,12 @@ import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.io.*;
 import java.nio.file.Files;
+
+import static com.github.tomaszgaweda.rocksdb.SerializationUtils.fromBytes;
+import static com.github.tomaszgaweda.rocksdb.SerializationUtils.toBytes;
 
 /**
  * Container for a single RocksDB database.
@@ -24,7 +28,7 @@ class RocksDatabase {
     private final boolean autoCreate;
     private final RocksDB db;
 
-    RocksDatabase(String dbDirectory, boolean autoCreate) {
+    RocksDatabase(@Nonnull String dbDirectory, boolean autoCreate) {
         this.directory = new File(dbDirectory);
         this.autoCreate = autoCreate;
 
@@ -46,9 +50,11 @@ class RocksDatabase {
         } catch (IOException | RocksDBException e) {
             throw new IllegalArgumentException("error initializing RocksDB", e);
         }
+
+        log.info("connection to database {} is opened successfully", directory);
     }
 
-    void put(Object key, Object value) {
+    void put(@Nonnull Object key, @Nonnull Object value) {
         try {
             db.put(toBytes(key), toBytes(value));
         } catch (RocksDBException e) {
@@ -56,46 +62,37 @@ class RocksDatabase {
         }
     }
 
-    <V> V get(Object key, Class<V> valueClass) {
+    <V> V get(@Nonnull Object key, @Nonnull Class<V> valueClass) {
         try {
-            return fromBytes(db.get(toBytes(key)), valueClass);
+            byte[] keyBytes = toBytes(key);
+            byte[] bytesFromDb = db.get(keyBytes);
+            return bytesFromDb == null ? null : fromBytes(bytesFromDb, valueClass);
         } catch (RocksDBException e) {
             throw new IllegalStateException("error when writing to rocksdb " + directory, e);
         }
     }
 
-    void delete (Object key) {
+    void delete (@Nonnull Object key) {
         try {
             db.delete(toBytes(key));
         } catch (RocksDBException e) {
             throw new IllegalStateException("error when writing to rocksdb " + directory, e);
         }
     }
-    /**
-     * Note: this should be done using SerializationService; this is a shortcut to avoid "hacking" Hazelcast.
-     */
-    @SuppressWarnings("unchecked")
-    private <V> V fromBytes(byte[] bytes, Class<V> valueClass) {
-        try (var ois = new ObjectInputStream(new ByteArrayInputStream(bytes))){
-            return (V) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new IllegalStateException("error when writing to rocksdb " + directory, e);
-        }
+
+    public void close() {
+        log.info("closing connection to database " + directory);
+        db.close();
     }
 
     /**
-     * Note: this should be done using SerializationService; this is a shortcut to avoid "hacking" Hazelcast.
+     * Returns directory in which RocksDB is located.
      */
-    private byte[] toBytes(Object value) {
-        var baos = new ByteArrayOutputStream();
-
-        try (var oos = new ObjectOutputStream(baos)){
-            oos.writeObject(value);
-            oos.flush();
-        } catch (IOException e) {
-            throw new IllegalStateException("error when writing to rocksdb " + directory, e);
-        }
-        return baos.toByteArray();
+    public File getDirectory() {
+        return directory;
     }
 
+    public boolean isAutoCreate() {
+        return autoCreate;
+    }
 }
