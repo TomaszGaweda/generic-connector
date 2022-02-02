@@ -38,7 +38,6 @@ public class RocksDbMapStoreTest {
                 .setClassName(RocksDbMapStore.class.getName())
                 .setProperty(DATABASE_PATH_PARAM, tempDbDir.toFile().getAbsolutePath())
                 .setProperty(DATABASE_AUTOCREATION_PARAM, "true")
-                .setProperty(KEY_CLASS_PARAM, "java.lang.String")
                 .setProperty(VALUE_CLASS_PARAM, "java.lang.String")
                 .setEnabled(true)
                 .setWriteBatchSize(1)
@@ -72,7 +71,7 @@ public class RocksDbMapStoreTest {
         var config = new Config();
         var mapConfig = new MapConfig("TestMap");
         var mapStoreConfig = new MapStoreConfig()
-                .setImplementation(new RocksDbMapStore<>(tempDbDir.toFile(), true, String.class, String.class))
+                .setImplementation(new RocksDbMapStore<>(tempDbDir.toFile(), true, String.class))
                 .setEnabled(true)
                 .setWriteBatchSize(1)
                 .setWriteDelaySeconds(0);
@@ -109,7 +108,7 @@ public class RocksDbMapStoreTest {
         var config = new Config();
         var mapConfig = new MapConfig("TestMap");
         var mapStoreConfig = new MapStoreConfig()
-                .setImplementation(new RocksDbMapStore<>(tempDbDir.toFile(), false, String.class, String.class))
+                .setImplementation(new RocksDbMapStore<>(tempDbDir.toFile(), false, String.class))
                 .setEnabled(true)
                 .setWriteBatchSize(1)
                 .setWriteDelaySeconds(0);
@@ -149,19 +148,19 @@ public class RocksDbMapStoreTest {
         var config = new Config();
         var mapConfigMap1 = new MapConfig("TestMap1")
                 .setMapStoreConfig(new MapStoreConfig()
-                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class, String.class))
+                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class))
                 .setEnabled(true)
                 .setWriteBatchSize(1)
                 .setWriteDelaySeconds(0));
         var mapConfigMap2 = new MapConfig("TestMap2")
                 .setMapStoreConfig(new MapStoreConfig()
-                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class, String.class))
+                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class))
                 .setEnabled(true)
                 .setWriteBatchSize(1)
                 .setWriteDelaySeconds(0));
         var mapConfigMap3 = new MapConfig("TestMap3")
                 .setMapStoreConfig(new MapStoreConfig()
-                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, String.class, Integer.class))
+                .setImplementation(new RocksDbMapStore<>(rocksDbDir, true, Integer.class))
                 .setEnabled(true)
                 .setWriteBatchSize(1)
                 .setWriteDelaySeconds(0));

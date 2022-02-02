@@ -42,6 +42,30 @@ import static java.util.Collections.emptyList;
  *
  *         mapConfig.setMapStoreConfig(mapStoreConfig);
  *         </pre>
+ *
+ *         List of supported parameters is as follows:
+ *         <table>
+ *             <tr>
+ *                 <th>Parameter</th>
+ *                 <th>Constant</th>
+ *                 <th>Default value</th>
+ *             </tr>
+ *             <tr>
+ *                 <td>rocksdb.database.path</td>
+ *                 <td>{@linkplain #DATABASE_PATH_PARAM}</td>
+ *                 <td>-</td>
+ *             </tr>
+ *             <tr>
+ *                 <td>rocksdb.database.autocreate</td>
+ *                 <td>{@linkplain #DATABASE_AUTOCREATION_PARAM}</td>
+ *                 <td>{@link #DATABASE_AUTOCREATION_DEFAULT}</td>
+ *             </tr>
+ *             <tr>
+ *                 <td>rocksdb.mapstore.valueClass</td>
+ *                 <td>{@linkplain #VALUE_CLASS_PARAM}</td>
+ *                 <td>-</td>
+ *             </tr>
+ *         </table>
  *         </li>
  *
  *         <li> Directly use constructor and pass the instance into
@@ -70,7 +94,7 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
     /**
      * Specifies the directory with RocksDB database.
      */
-    public static final String DATABASE_PATH_PARAM = "rocksdb.datbase.path";
+    public static final String DATABASE_PATH_PARAM = "rocksdb.database.path";
 
     /**
      * If true, connector will create database when it was not present in {@linkplain #DATABASE_PATH_PARAM}.
@@ -83,26 +107,27 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
     public static final String DATABASE_AUTOCREATION_DEFAULT = "true";
 
     /**
-     * Name of the class that MapStore will handle as a key.
-     */
-    public static final String KEY_CLASS_PARAM = "rocksdb.mapstore.keyClass";
-
-    /**
      * Name of the class that MapStore will handle as a value.
      */
     public static final String VALUE_CLASS_PARAM = "rocksdb.mapstore.valueClass";
 
     private RocksDatabase rocksDatabase;
-    private Class<K> keyClass;
     private Class<V> valueClass;
 
     @SuppressWarnings("unused") // for indirect creation by Hazelcast
     public RocksDbMapStore() {}
 
+    /**
+     * Creates a new instance of RocksDB-backed MapStore, that can be passed then to
+     * {@link com.hazelcast.config.MapStoreConfig#setImplementation} method.
+     * @param rocksDbDir directory in which the RocksDB database is located.
+     * @param autoCreate if true and there is no RocksDB in provided directory (or directory does not exist at all),
+     *                   the RocksDB will be created from scratch in given directory.
+     * @param valueClass The class of values hold in the map that this MapStore is backing.
+     */
     // todo: add builder
-    public RocksDbMapStore(File rocksDbDir, boolean autoCreate, Class<K> keyClass, Class<V> valueClass) {
+    public RocksDbMapStore(File rocksDbDir, boolean autoCreate, Class<V> valueClass) {
         this.rocksDatabase = getRocksDb(rocksDbDir.getAbsolutePath(), autoCreate, this);
-        this.keyClass = keyClass;
         this.valueClass = valueClass;
     }
 
@@ -112,7 +137,6 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
         if (rocksDatabase != null) return; // already initialized in the constructor
        this.rocksDatabase = databaseFor(properties);
         try {
-            this.keyClass = (Class<K>) Class.forName(properties.getProperty(KEY_CLASS_PARAM));
             this.valueClass = (Class<V>) Class.forName(properties.getProperty(VALUE_CLASS_PARAM));
         } catch (ClassNotFoundException e) {
             throw new IllegalArgumentException("error initializing RocksDbMapStore", e);
