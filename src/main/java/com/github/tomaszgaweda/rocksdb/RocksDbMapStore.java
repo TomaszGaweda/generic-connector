@@ -4,8 +4,8 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.MapLoaderLifecycleSupport;
 import com.hazelcast.map.MapStore;
 
-import java.io.File;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,15 +36,34 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
     public static final String DATABASE_AUTOCREATION_DEFAULT = "true";
 
     /**
+     * Name of the class that MapStore will handle as a key.
+     */
+    public static final String KEY_CLASS_PARAM = "rocksdb.mapstore.keyClass";
+
+    /**
+     * Name of the class that MapStore will handle as a value.
+     */
+    public static final String VALUE_CLASS_PARAM = "rocksdb.mapstore.valueClass";
+
+    /**
      * Map of db path -> db handler.
      */
     private static final Map<String, RocksDatabase> CACHED_DATABASES = new ConcurrentHashMap<>();
 
     private RocksDatabase rocksDatabase;
+    private Class<K> keyClass;
+    private Class<V> valueClass;
 
     @Override
+    @SuppressWarnings("unchecked")
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
        this.rocksDatabase = databaseFor(properties);
+        try {
+            this.keyClass = (Class<K>) Class.forName(properties.getProperty(KEY_CLASS_PARAM));
+            this.valueClass = (Class<V>) Class.forName(properties.getProperty(VALUE_CLASS_PARAM));
+        } catch (ClassNotFoundException e) {
+            throw new IllegalArgumentException("error initializing RocksDbMapStore", e);
+        }
     }
 
     /**
@@ -64,34 +83,41 @@ public class RocksDbMapStore<K, V> implements MapStore<K, V>, MapLoaderLifecycle
     }
 
     @Override
-    public void store(K k, V v) {
-        System.out.println(k + " " + v);
+    public void store(K key, V value) {
+        rocksDatabase.put(key, value);
     }
 
     @Override
     public void storeAll(Map<K, V> map) {
-        System.out.println(map);
-
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            store(entry.getKey(), entry.getValue());
+        }
     }
 
     @Override
-    public void delete(K k) {
-
+    public void delete(K key) {
+        rocksDatabase.delete(key);
     }
 
     @Override
     public void deleteAll(Collection<K> collection) {
-
+        for (K key : collection) {
+            delete(key);
+        }
     }
 
     @Override
     public V load(K k) {
-        return null;
+        return rocksDatabase.get(k, valueClass);
     }
 
     @Override
     public Map<K, V> loadAll(Collection<K> collection) {
-        return null;
+        var resultMap = new HashMap<K, V>(collection.size());
+        for (K key : collection) {
+            resultMap.put(key, load(key));
+        }
+        return resultMap;
     }
 
     @Override
